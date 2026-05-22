@@ -1,6 +1,6 @@
 # TelecomOS
 
-Version: `1.0.0`
+Version: `1.0.0.0`
 
 TelecomOS is a Laravel-based modular telecom OSS/BSS platform. It is built as a modular monolith under `app/Modules` so customer, billing, provisioning, paywall, support, email, switching, automation, integration, and reporting capabilities can later split into services without rewriting core workflows.
 
@@ -35,6 +35,12 @@ docker compose --profile lamp up -d apache mysql redis mailpit
 ```
 
 Open `http://localhost:8081`.
+
+## Shared Hosting
+
+TelecomOS v1.0.0.0 includes a shared-hosting deployment path for Apache/cPanel-style environments where the app is uploaded into `public_html` and connected to a MySQL database.
+
+Read [docs/SHARED_HOSTING.md](docs/SHARED_HOSTING.md) before uploading.
 
 ## Architecture
 
