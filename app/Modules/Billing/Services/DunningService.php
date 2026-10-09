@@ -2,9 +2,11 @@
 
 namespace App\Modules\Billing\Services;
 
+use App\Enums\InvoiceStatus;
 use App\Modules\Billing\Models\Invoice;
 use App\Modules\Core\Services\CriticalOperation;
 use App\Modules\Paywall\Services\DnsPaywallService;
+use Illuminate\Support\Facades\DB;
 
 class DunningService
 {
@@ -14,22 +16,38 @@ class DunningService
     ) {
     }
 
+    /**
+     * Advance the dunning escalation stage for an overdue invoice.
+     */
     public function runForInvoice(Invoice $invoice): Invoice
     {
         if ($invoice->balance_due <= 0) {
             return $invoice;
         }
 
-        $stage = min(((int) $invoice->dunning_stage) + 1, 4);
-        $status = $stage >= 1 ? 'overdue' : $invoice->status;
-        $invoice->update(['dunning_stage' => $stage, 'status' => $status]);
+        return DB::transaction(function () use ($invoice): Invoice {
+            $stage = min(((int) $invoice->dunning_stage) + 1, 4);
+            $status = $stage >= 1 ? InvoiceStatus::Overdue->value : $invoice->status;
 
-        $this->operations->record('billing', 'dunning.stage_advanced', $invoice, ['stage' => $stage]);
+            $invoice->update([
+                'dunning_stage' => $stage,
+                'status' => $status,
+            ]);
 
-        if ($stage >= 3) {
-            $this->paywall->apply($invoice->customer, 'invoice_overdue_stage_'.$stage);
-        }
+            $this->operations->record('billing', 'dunning.stage_advanced', $invoice, [
+                'stage' => $stage,
+                'invoice_number' => $invoice->invoice_number,
+                'balance_due' => (float) $invoice->balance_due,
+            ]);
 
-        return $invoice->refresh();
+            if ($stage >= 3) {
+                $invoice->loadMissing('customer');
+                if ($invoice->customer) {
+                    $this->paywall->apply($invoice->customer, 'invoice_overdue_stage_'.$stage);
+                }
+            }
+
+            return $invoice->refresh();
+        });
     }
 }

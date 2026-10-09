@@ -8,10 +8,20 @@ use Symfony\Component\HttpFoundation\Response;
 
 class EnsureUserHasPermission
 {
-    public function handle(Request $request, Closure $next, string $permission): Response
+    public function handle(Request $request, Closure $next, string ...$permissions): Response
     {
-        abort_if($request->user() && ! $request->user()->can($permission), 403);
+        $user = $request->user();
 
-        return $next($request);
+        if (! $user) {
+            abort(401, 'Unauthenticated.');
+        }
+
+        foreach ($permissions as $permission) {
+            if ($user->can($permission)) {
+                return $next($request);
+            }
+        }
+
+        abort(403, 'Unauthorized action.');
     }
 }

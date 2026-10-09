@@ -2,11 +2,14 @@
 
 namespace App\Modules\Email\Models;
 
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class EmailMessage extends Model
 {
+    use HasFactory;
+
     protected $fillable = [
         'email_thread_id',
         'direction',
@@ -17,9 +20,17 @@ class EmailMessage extends Model
         'headers',
     ];
 
-    protected $casts = [
-        'headers' => 'array',
-    ];
+    /**
+     * Get the attributes that should be cast.
+     *
+     * @return array<string, string>
+     */
+    protected function casts(): array
+    {
+        return [
+            'headers' => 'array',
+        ];
+    }
 
     public function thread(): BelongsTo
     {

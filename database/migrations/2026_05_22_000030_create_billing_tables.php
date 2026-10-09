@@ -22,19 +22,24 @@ return new class extends Migration
             $table->unsignedTinyInteger('dunning_stage')->default(0);
             $table->json('line_items')->nullable();
             $table->timestamps();
+
+            $table->index(['customer_id', 'status']);
+            $table->index(['balance_due', 'due_date']);
         });
 
         Schema::create('payments', function (Blueprint $table): void {
             $table->id();
             $table->foreignId('customer_id')->constrained()->cascadeOnDelete();
             $table->foreignId('invoice_id')->nullable()->constrained()->nullOnDelete();
-            $table->string('provider')->default('manual');
-            $table->string('reference')->nullable();
+            $table->string('provider')->default('manual')->index();
+            $table->string('reference')->nullable()->index();
             $table->decimal('amount', 12, 2);
-            $table->string('status')->default('received');
+            $table->string('status')->default('received')->index();
             $table->timestamp('received_at')->nullable();
             $table->json('payload')->nullable();
             $table->timestamps();
+
+            $table->index(['customer_id', 'status']);
         });
     }
 

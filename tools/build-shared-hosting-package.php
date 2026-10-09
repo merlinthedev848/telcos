@@ -1,5 +1,12 @@
 <?php
 
+/**
+ * TelecomOS Shared Hosting Deployment Packager
+ *
+ * Recursively copies application files into a deployable shared-hosting artifact directory,
+ * stripping development dependencies, cache files, and private configuration.
+ */
+
 $root = dirname(__DIR__);
 $target = $root.'/build/shared-hosting/public_html';
 
@@ -55,6 +62,7 @@ removeTree($target);
 
 copyTree($root, $target, [
     '.git',
+    '.github',
     'build',
     'docker',
     'node_modules',
@@ -65,4 +73,4 @@ copyTree($root, $target, [
     '.phpunit.cache',
 ]);
 
-echo "Shared hosting package ready: {$target}".PHP_EOL;
+echo "Shared hosting deployment package created successfully: {$target}".PHP_EOL;

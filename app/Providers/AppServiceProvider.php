@@ -2,6 +2,7 @@
 
 namespace App\Providers;
 
+use App\Modules\Automations\Console\RunAutomationsCommand;
 use App\Modules\Billing\Console\RunDunningCommand;
 use App\Modules\Paywall\Console\SyncPaywallCommand;
 use Illuminate\Support\ServiceProvider;
@@ -19,6 +20,7 @@ class AppServiceProvider extends ServiceProvider
             $this->commands([
                 RunDunningCommand::class,
                 SyncPaywallCommand::class,
+                RunAutomationsCommand::class,
             ]);
         }
     }

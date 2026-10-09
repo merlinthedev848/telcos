@@ -3,24 +3,36 @@
 namespace App\Modules\Billing\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Http\Resources\InvoiceResource;
 use App\Modules\Billing\Models\Invoice;
 use App\Modules\Billing\Services\DunningService;
-use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
+use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 
 class InvoiceApiController extends Controller
 {
-    public function index(): JsonResponse
+    public function index(Request $request): AnonymousResourceCollection
     {
-        return response()->json(Invoice::query()->with('customer')->latest()->paginate());
+        $status = $request->string('status')->toString();
+
+        $invoices = Invoice::query()
+            ->with('customer')
+            ->when($status, fn ($query) => $query->where('status', $status))
+            ->latest()
+            ->paginate($request->integer('per_page', 15));
+
+        return InvoiceResource::collection($invoices);
     }
 
-    public function show(Invoice $invoice): JsonResponse
+    public function show(Invoice $invoice): InvoiceResource
     {
-        return response()->json($invoice->load('customer'));
+        return new InvoiceResource($invoice->loadMissing('customer'));
     }
 
-    public function runDunning(Invoice $invoice, DunningService $dunning): JsonResponse
+    public function runDunning(Invoice $invoice, DunningService $dunning): InvoiceResource
     {
-        return response()->json($dunning->runForInvoice($invoice));
+        $updated = $dunning->runForInvoice($invoice);
+
+        return new InvoiceResource($updated->loadMissing('customer'));
     }
 }

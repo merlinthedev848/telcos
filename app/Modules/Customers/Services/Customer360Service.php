@@ -2,21 +2,53 @@
 
 namespace App\Modules\Customers\Services;
 
+use App\Enums\InvoiceStatus;
 use App\Modules\Customers\Models\Customer;
 
 class Customer360Service
 {
+    /**
+     * Build an optimized 360-degree operational view for a customer.
+     *
+     * @param Customer $customer
+     * @return array<string, mixed>
+     */
     public function snapshot(Customer $customer): array
     {
-        $customer->load(['invoices', 'tickets', 'emailThreads', 'switchingWorkflows']);
+        $customer->loadMissing(['paywallState']);
+
+        $balanceDue = (float) $customer->invoices()
+            ->whereIn('status', [InvoiceStatus::Issued->value, InvoiceStatus::Overdue->value])
+            ->sum('balance_due');
+
+        $latestInvoice = $customer->invoices()
+            ->latest('due_date')
+            ->first();
+
+        $openTickets = $customer->tickets()
+            ->open()
+            ->with(['assignee', 'messages'])
+            ->latest('last_activity_at')
+            ->get();
+
+        $switching = $customer->switchingWorkflows()
+            ->latest('created_at')
+            ->first();
+
+        $communications = $customer->emailThreads()
+            ->with(['messages' => fn ($q) => $q->latest()->limit(2)])
+            ->latest('last_message_at')
+            ->take(5)
+            ->get();
 
         return [
             'customer' => $customer,
-            'balance_due' => $customer->invoices->whereIn('status', ['issued', 'overdue'])->sum('balance_due'),
-            'latest_invoice' => $customer->invoices->sortByDesc('due_date')->first(),
-            'open_tickets' => $customer->tickets->whereIn('status', ['new', 'open', 'pending'])->values(),
-            'switching' => $customer->switchingWorkflows->sortByDesc('created_at')->first(),
-            'communications' => $customer->emailThreads->sortByDesc('last_message_at')->take(5),
+            'balance_due' => $balanceDue,
+            'latest_invoice' => $latestInvoice,
+            'open_tickets' => $openTickets,
+            'switching' => $switching,
+            'communications' => $communications,
+            'paywall' => $customer->paywallState,
         ];
     }
 }

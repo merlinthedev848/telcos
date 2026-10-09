@@ -1,33 +1,84 @@
 @extends('layouts.app')
 
 @section('content')
-    <h1 class="mb-5 text-2xl font-semibold">Support Inbox</h1>
-    <div class="grid gap-4 lg:grid-cols-[20rem_1fr]">
-        <aside class="table-shell divide-y divide-line">
-            @foreach($tickets as $ticket)
-                <div class="p-4">
+    <div class="mb-6 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+            <h1 class="text-2xl font-bold text-ink">Unified Support Inbox</h1>
+            <p class="text-sm text-slate-500">Manage omnichannel communications, customer tickets, and engineering escalations.</p>
+        </div>
+    </div>
+
+    <div class="grid gap-6 lg:grid-cols-[22rem_1fr]">
+        <!-- Ticket list -->
+        <aside class="table-shell max-h-[750px] overflow-y-auto rounded-xl border border-line divide-y divide-line shadow-sm">
+            <div class="bg-panel px-4 py-3 text-xs font-bold uppercase tracking-wider text-slate-500">
+                Tickets Queue ({{ $tickets->total() }})
+            </div>
+            @forelse($tickets as $index => $ticket)
+                <div class="p-4 transition hover:bg-slate-50/80 {{ $index === 0 ? 'bg-slate-50/90 border-l-4 border-action' : '' }}">
                     <div class="flex items-center justify-between">
-                        <span class="font-semibold">{{ $ticket->ticket_number }}</span>
-                        <span class="status-pill bg-slate-100 text-slate-700">{{ $ticket->status }}</span>
+                        <span class="font-mono text-xs font-bold text-slate-700">{{ $ticket->ticket_number }}</span>
+                        @php
+                            $ticketBadge = match($ticket->status) {
+                                'new' => 'bg-sky-100 text-sky-800',
+                                'open' => 'bg-emerald-100 text-emerald-800',
+                                'pending' => 'bg-amber-100 text-amber-800',
+                                'resolved', 'closed' => 'bg-slate-100 text-slate-600',
+                                default => 'bg-slate-100 text-slate-700',
+                            };
+                        @endphp
+                        <span class="status-pill rounded-full text-[10px] {{ $ticketBadge }}">{{ $ticket->status }}</span>
                     </div>
-                    <div class="mt-1 text-sm font-medium">{{ $ticket->subject }}</div>
-                    <div class="mt-1 text-xs text-slate-500">{{ $ticket->customer?->email }}</div>
+                    <div class="mt-1.5 text-sm font-bold text-ink line-clamp-1">{{ $ticket->subject }}</div>
+                    <div class="mt-1 flex items-center justify-between text-xs text-slate-400">
+                        <span>{{ $ticket->customer?->display_name ?? 'Guest' }}</span>
+                        <span>{{ $ticket->last_activity_at?->diffForHumans() }}</span>
+                    </div>
                 </div>
-            @endforeach
+            @empty
+                <div class="p-8 text-center text-xs text-slate-400">No support tickets found.</div>
+            @endforelse
         </aside>
-        <section class="table-shell p-5">
-            <h2 class="text-lg font-semibold">Unified Conversation</h2>
-            <p class="mt-2 text-sm text-slate-600">Kayako-style ticket stream ready for email, portal, live chat, NOC, and field-service module channels.</p>
-            @foreach($tickets->take(1) as $ticket)
-                <div class="mt-5 space-y-3">
-                    @foreach($ticket->messages as $message)
-                        <div class="border border-line bg-panel p-3">
-                            <div class="text-xs font-semibold uppercase text-slate-500">{{ $message->direction }} · {{ $message->sender }}</div>
-                            <p class="mt-2 text-sm">{{ $message->body }}</p>
+
+        <!-- Active Ticket Detail -->
+        <section class="table-shell rounded-xl border border-line p-6 shadow-sm">
+            @if($tickets->isNotEmpty())
+                @php($activeTicket = $tickets->first())
+                <div class="border-b border-line pb-4">
+                    <div class="flex items-start justify-between">
+                        <div>
+                            <span class="font-mono text-xs font-semibold text-action">{{ $activeTicket->ticket_number }}</span>
+                            <h2 class="mt-1 text-xl font-bold text-ink">{{ $activeTicket->subject }}</h2>
+                            <p class="mt-1 text-xs text-slate-500">
+                                Customer: <span class="font-semibold text-slate-700">{{ $activeTicket->customer?->display_name }}</span> ({{ $activeTicket->customer?->email }})
+                                · Channel: <span class="font-medium uppercase text-slate-600">{{ $activeTicket->channel }}</span>
+                                · Priority: <span class="font-medium uppercase text-slate-600">{{ $activeTicket->priority }}</span>
+                            </p>
                         </div>
-                    @endforeach
+                        <span class="status-pill rounded-full bg-panel border border-line text-xs font-semibold uppercase text-slate-700">
+                            Status: {{ $activeTicket->status }}
+                        </span>
+                    </div>
                 </div>
-            @endforeach
+
+                <div class="mt-6 space-y-4 max-h-[480px] overflow-y-auto pr-2">
+                    @forelse($activeTicket->messages as $msg)
+                        <div class="rounded-xl border p-4 shadow-xs {{ $msg->direction === 'inbound' ? 'border-slate-200 bg-panel' : 'border-teal-200 bg-teal-50/50 ml-6' }}">
+                            <div class="flex items-center justify-between text-xs font-bold text-slate-500">
+                                <span class="uppercase tracking-wider {{ $msg->direction === 'inbound' ? 'text-slate-600' : 'text-action' }}">
+                                    {{ $msg->direction === 'inbound' ? 'Subscriber' : 'Support Agent' }} · {{ $msg->sender }}
+                                </span>
+                                <span>{{ $msg->created_at?->format('d M Y H:i') }}</span>
+                            </div>
+                            <div class="mt-2.5 text-sm text-ink whitespace-pre-line leading-relaxed">{{ $msg->body }}</div>
+                        </div>
+                    @empty
+                        <p class="text-xs text-slate-400">No message history available.</p>
+                    @endforelse
+                </div>
+            @else
+                <div class="py-16 text-center text-sm text-slate-400">Select a ticket to inspect conversation history.</div>
+            @endif
         </section>
     </div>
 @endsection

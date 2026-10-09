@@ -1,8 +1,14 @@
 @extends('layouts.app')
 
 @section('content')
-    <h1 class="mb-5 text-2xl font-semibold">Create Customer</h1>
-    <form method="post" action="{{ route('customers.store') }}" class="table-shell p-5">
-        @include('customers._form')
-    </form>
+    <div class="mb-6">
+        <h1 class="text-2xl font-bold text-ink">New Customer Registration</h1>
+        <p class="text-sm text-slate-500">Register a new subscriber account into TelecomOS OSS/BSS.</p>
+    </div>
+
+    <div class="max-w-3xl rounded-xl border border-line bg-white p-6 shadow-sm">
+        <form method="post" action="{{ route('customers.store') }}">
+            @include('customers._form')
+        </form>
+    </div>
 @endsection

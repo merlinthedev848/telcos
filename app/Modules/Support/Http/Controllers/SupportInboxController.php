@@ -10,12 +10,23 @@ class SupportInboxController extends Controller
 {
     public function __invoke(): View
     {
+        $statusOrderSql = "CASE status
+            WHEN 'new' THEN 1
+            WHEN 'open' THEN 2
+            WHEN 'pending' THEN 3
+            WHEN 'resolved' THEN 4
+            WHEN 'closed' THEN 5
+            ELSE 6
+        END";
+
+        $tickets = SupportTicket::query()
+            ->with(['customer', 'messages'])
+            ->orderByRaw($statusOrderSql)
+            ->latest('last_activity_at')
+            ->paginate(30);
+
         return view('support.inbox', [
-            'tickets' => SupportTicket::query()
-                ->with(['customer', 'messages'])
-                ->orderByRaw("FIELD(status, 'new', 'open', 'pending', 'resolved', 'closed')")
-                ->latest('last_activity_at')
-                ->paginate(30),
+            'tickets' => $tickets,
         ]);
     }
 }

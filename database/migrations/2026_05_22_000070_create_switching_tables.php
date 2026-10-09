@@ -13,12 +13,14 @@ return new class extends Migration
             $table->foreignId('customer_id')->constrained()->cascadeOnDelete();
             $table->string('ots_reference')->unique();
             $table->string('status')->default('draft')->index();
-            $table->string('losing_provider')->nullable();
-            $table->string('gaining_provider')->nullable();
-            $table->date('requested_switch_date')->nullable();
-            $table->timestamp('completed_at')->nullable();
+            $table->string('losing_provider')->nullable()->index();
+            $table->string('gaining_provider')->nullable()->index();
+            $table->date('requested_switch_date')->nullable()->index();
+            $table->timestamp('completed_at')->nullable()->index();
             $table->json('payload')->nullable();
             $table->timestamps();
+
+            $table->index(['customer_id', 'status']);
         });
     }
 

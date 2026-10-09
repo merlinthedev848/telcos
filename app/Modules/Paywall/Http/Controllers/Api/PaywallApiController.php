@@ -3,20 +3,31 @@
 namespace App\Modules\Paywall\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Http\Resources\PaywallStateResource;
 use App\Modules\Customers\Models\Customer;
 use App\Modules\Paywall\Services\DnsPaywallService;
-use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
 class PaywallApiController extends Controller
 {
-    public function apply(Request $request, Customer $customer, DnsPaywallService $paywall): JsonResponse
+    public function apply(Request $request, Customer $customer, DnsPaywallService $paywall): PaywallStateResource
     {
-        return response()->json($paywall->apply($customer, $request->string('reason', 'manual_restriction')->toString()));
+        $validated = $request->validate([
+            'reason' => ['nullable', 'string', 'max:255'],
+        ]);
+
+        $state = $paywall->apply(
+            $customer,
+            $validated['reason'] ?? 'manual_restriction',
+        );
+
+        return new PaywallStateResource($state->loadMissing('customer'));
     }
 
-    public function restore(Customer $customer, DnsPaywallService $paywall): JsonResponse
+    public function restore(Customer $customer, DnsPaywallService $paywall): PaywallStateResource
     {
-        return response()->json($paywall->restore($customer));
+        $state = $paywall->restore($customer);
+
+        return new PaywallStateResource($state->loadMissing('customer'));
     }
 }

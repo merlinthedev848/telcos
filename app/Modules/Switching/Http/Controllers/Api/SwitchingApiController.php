@@ -2,34 +2,59 @@
 
 namespace App\Modules\Switching\Http\Controllers\Api;
 
+use App\Enums\SwitchingStatus;
 use App\Http\Controllers\Controller;
+use App\Http\Requests\StoreSwitchingWorkflowRequest;
+use App\Http\Resources\SwitchingWorkflowResource;
 use App\Modules\Customers\Models\Customer;
 use App\Modules\Switching\Models\SwitchingWorkflow;
 use App\Modules\Switching\Services\OtsSwitchingService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
+use Illuminate\Validation\Rule;
+use Symfony\Component\HttpFoundation\Response;
 
 class SwitchingApiController extends Controller
 {
-    public function index(): JsonResponse
+    public function index(Request $request): AnonymousResourceCollection
     {
-        return response()->json(SwitchingWorkflow::query()->with('customer')->latest()->paginate());
+        $status = $request->string('status')->toString();
+
+        $workflows = SwitchingWorkflow::query()
+            ->with('customer')
+            ->when($status, fn ($q) => $q->where('status', $status))
+            ->latest()
+            ->paginate($request->integer('per_page', 15));
+
+        return SwitchingWorkflowResource::collection($workflows);
     }
 
-    public function store(Request $request, OtsSwitchingService $switching): JsonResponse
+    public function store(StoreSwitchingWorkflowRequest $request, OtsSwitchingService $switching): JsonResponse
     {
-        $data = $request->validate([
-            'customer_id' => ['required', 'exists:customers,id'],
-            'losing_provider' => ['nullable', 'string'],
-            'gaining_provider' => ['nullable', 'string'],
-            'requested_switch_date' => ['nullable', 'date'],
+        $validated = $request->validated();
+        $customer = Customer::query()->findOrFail($validated['customer_id']);
+
+        $workflow = $switching->start($customer, $validated);
+
+        return (new SwitchingWorkflowResource($workflow->loadMissing('customer')))
+            ->response()
+            ->setStatusCode(Response::HTTP_CREATED);
+    }
+
+    public function show(SwitchingWorkflow $workflow): SwitchingWorkflowResource
+    {
+        return new SwitchingWorkflowResource($workflow->loadMissing('customer'));
+    }
+
+    public function advance(Request $request, SwitchingWorkflow $workflow, OtsSwitchingService $switching): SwitchingWorkflowResource
+    {
+        $validated = $request->validate([
+            'status' => ['required', 'string', Rule::in(SwitchingStatus::values())],
         ]);
 
-        return response()->json($switching->start(Customer::query()->findOrFail($data['customer_id']), $data), 201);
-    }
+        $advanced = $switching->advance($workflow, $validated['status']);
 
-    public function show(SwitchingWorkflow $workflow): JsonResponse
-    {
-        return response()->json($workflow->load('customer'));
+        return new SwitchingWorkflowResource($advanced->loadMissing('customer'));
     }
 }

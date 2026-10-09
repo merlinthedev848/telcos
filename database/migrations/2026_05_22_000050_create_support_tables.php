@@ -14,21 +14,26 @@ return new class extends Migration
             $table->string('ticket_number')->unique();
             $table->string('subject');
             $table->string('status')->default('new')->index();
-            $table->string('priority')->default('normal');
-            $table->string('channel')->default('email');
+            $table->string('priority')->default('normal')->index();
+            $table->string('channel')->default('email')->index();
             $table->foreignId('assigned_to')->nullable()->constrained('users')->nullOnDelete();
             $table->timestamp('last_activity_at')->nullable()->index();
             $table->timestamps();
+
+            $table->index(['customer_id', 'status']);
+            $table->index(['status', 'last_activity_at']);
         });
 
         Schema::create('support_ticket_messages', function (Blueprint $table): void {
             $table->id();
             $table->foreignId('support_ticket_id')->constrained()->cascadeOnDelete();
-            $table->string('direction');
+            $table->string('direction')->index();
             $table->string('sender');
             $table->longText('body');
             $table->json('metadata')->nullable();
             $table->timestamps();
+
+            $table->index(['support_ticket_id', 'created_at']);
         });
     }
 
